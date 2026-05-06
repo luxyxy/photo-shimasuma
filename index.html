@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>写真加工シマスマ</title>
+<style>
+  @font-face {
+    font-family: 'CustomFont';
+    src: url('fonttt.otf') format('opentype');
+  }
+
+  body {
+    background: #BCBCBC;
+    color: #000000;
+    text-align: center;
+    font-family: 'CustomFont', sans-serif;
+  }
+  canvas {
+    margin-top: 20px;
+    max-width: 90%;
+  }
+  .controls {
+    margin-top: 15px;
+  }
+  input[type="range"] {
+    width: 200px;
+  }
+  button {
+    margin-left: 10px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #009700;
+    color: #ffffff;
+    cursor: pointer;
+    font-family: 'CustomFont', sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<h2>写真加工シマスマ</h2>
+
+<input type="file" id="upload"><br>
+
+<div class="controls">
+  強さ：
+  <input type="range" id="strength" min="0" max="100" value="70">
+  <span id="value">70</span>%
+  <button id="save">保存（JPG）</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const upload = document.getElementById('upload');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('strength');
+const valueText = document.getElementById('value');
+const saveBtn = document.getElementById('save');
+
+let originalImage = null;
+
+slider.addEventListener('input', () => {
+  valueText.textContent = slider.value;
+  if (originalImage) applyFilter();
+});
+
+upload.addEventListener('change', e => {
+  const file = e.target.files[0];
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+
+  img.onload = () => {
+    originalImage = img;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    applyFilter();
+  };
+});
+
+function applyFilter() {
+  const strength = slider.value / 100;
+
+  ctx.drawImage(originalImage, 0, 0);
+
+  let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i];
+    let g = data[i + 1];
+    let b = data[i + 2];
+
+    let newR = r * (1 + 0.2 * strength) + g * (0.1 * strength);
+    let newG = g * (1 + 0.05 * strength);
+    let newB = b * (1 - 0.2 * strength);
+
+    let avg = (newR + newG + newB) / 3;
+    newR = newR * (1 - 0.3 * strength) + avg * (0.3 * strength);
+    newG = newG * (1 - 0.3 * strength) + avg * (0.3 * strength);
+    newB = newB * (1 - 0.3 * strength) + avg * (0.3 * strength);
+
+    let noise = (Math.random() - 0.5) * 50 * strength;
+    newR += noise;
+    newG += noise;
+    newB += noise;
+
+    data[i] = newR;
+    data[i + 1] = newG;
+    data[i + 2] = newB;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  let grad = ctx.createRadialGradient(
+    canvas.width/2, canvas.height/2, canvas.width/4,
+    canvas.width/2, canvas.height/2, canvas.width/1.2
+  );
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, `rgba(0,0,0,${0.6 * strength})`);
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+saveBtn.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = "film_photo.jpg";
+  link.href = canvas.toDataURL("image/jpeg", 0.9);
+  link.click();
+});
+</script>
+
+</body>
+</html>
